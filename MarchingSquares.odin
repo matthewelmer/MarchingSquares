@@ -78,7 +78,7 @@ line_table : [16][4]i32 = {
     {-1, -1, -1, -1},
 }
 
-Point :: struct {x, y, value : f32}
+Point :: struct {pos : [2]f32, value : f32}
 
 screen_width := f32(INITIAL_SCREEN_WIDTH)
 screen_height := f32(INITIAL_SCREEN_HEIGHT)
@@ -91,7 +91,7 @@ draw_points : bool
 
 grid : [GRID_ROWS][GRID_COLS]Point
 
-implicit_fn : proc(x, y : f32) -> f32
+implicit_fn : proc(pos : [2]f32) -> f32
 isovalue : f32
 
 main :: proc() {
@@ -113,16 +113,14 @@ main :: proc() {
 }
 
 init_sim :: proc() {
-    // message = "Howdy, World!"
-
     // Let's do an ellipse
-    implicit_fn = proc(x, y : f32) -> f32 {
+    implicit_fn = proc(pos : [2]f32) -> f32 {
         height : f32 = 500.0
         width : f32 = 920.0
         center : rl.Vector2 = {screen_width / 2.0, screen_height / 2.0}
 
-        x2 := (x - center[0]) * (x - center[0])
-        y2 := (y - center[1]) * (y - center[1])
+        x2 := (pos[0] - center[0]) * (pos[0] - center[0])
+        y2 := (pos[1] - center[1]) * (pos[1] - center[1])
         a2 := width / 2.0 * width / 2.0
         b2 := height / 2.0 * height / 2.0
 
@@ -134,9 +132,9 @@ init_sim :: proc() {
     y_offset := screen_height / f32(GRID_ROWS) / 2.0
     for ii in 0..<GRID_ROWS {
         for jj in 0..<GRID_COLS {
-            grid[ii][jj].x = f32(jj) / f32(GRID_COLS) * screen_width + x_offset
-            grid[ii][jj].y = f32(ii) / f32(GRID_ROWS) * screen_height + y_offset
-            grid[ii][jj].value = implicit_fn(grid[ii][jj].x, grid[ii][jj].y)
+            grid[ii][jj].pos[0] = f32(jj) / f32(GRID_COLS) * screen_width + x_offset
+            grid[ii][jj].pos[1] = f32(ii) / f32(GRID_ROWS) * screen_height + y_offset
+            grid[ii][jj].value = implicit_fn(grid[ii][jj].pos)
         }
     }
 }
@@ -169,9 +167,9 @@ draw_sim :: proc() {
     if draw_points do for row in grid {
         for point in row {
             if point.value < isovalue {
-                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
+                rl.DrawCircle(i32(point.pos[0]), i32(point.pos[1]), POINT_RADIUS, POINT_INTERIOR_COLOR)
             } else {
-                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
+                rl.DrawCircle(i32(point.pos[0]), i32(point.pos[1]), POINT_RADIUS, POINT_EXTERIOR_COLOR)
             }
         }
     }
@@ -192,19 +190,19 @@ draw_sim :: proc() {
                 linear_interp(
                     grid[ii][jj].value,
                     grid[ii][jj + 1].value,
-                    grid[ii][jj].x,
-                    grid[ii][jj + 1].x,
+                    grid[ii][jj].pos[0],
+                    grid[ii][jj + 1].pos[0],
                     isovalue
                 ),
-                grid[ii][jj].y,
+                grid[ii][jj].pos[1],
             }
             if bool(edge_table[square_index] & 0b0010) do vert_list[1] = {
-                grid[ii][jj + 1].x,
+                grid[ii][jj + 1].pos[0],
                 linear_interp(
                 grid[ii][jj + 1].value,
                 grid[ii + 1][jj + 1].value,
-                grid[ii][jj + 1].y,
-                grid[ii + 1][jj + 1].y,
+                grid[ii][jj + 1].pos[1],
+                grid[ii + 1][jj + 1].pos[1],
                 isovalue
             ),
             }
@@ -212,19 +210,19 @@ draw_sim :: proc() {
                 linear_interp(
                     grid[ii + 1][jj + 1].value,
                     grid[ii + 1][jj].value,
-                    grid[ii + 1][jj + 1].x,
-                    grid[ii + 1][jj].x,
+                    grid[ii + 1][jj + 1].pos[0],
+                    grid[ii + 1][jj].pos[0],
                     isovalue
                 ),
-                grid[ii + 1][jj + 1].y,
+                grid[ii + 1][jj + 1].pos[1],
             }
             if bool(edge_table[square_index] & 0b1000) do vert_list[3] = {
-                grid[ii + 1][jj].x,
+                grid[ii + 1][jj].pos[0],
                 linear_interp(
                     grid[ii + 1][jj].value,
                     grid[ii][jj].value,
-                    grid[ii + 1][jj].y,
-                    grid[ii][jj].y,
+                    grid[ii + 1][jj].pos[1],
+                    grid[ii][jj].pos[1],
                     isovalue
                 ),
             }
