@@ -9,7 +9,8 @@ INITIAL_SCREEN_WIDTH :: 1024
 INITIAL_SCREEN_HEIGHT :: 1024
 
 BACKGROUND_COLOR :: rl.DARKGRAY
-POINT_COLOR :: rl.RAYWHITE
+POINT_INTERIOR_COLOR :: rl.RAYWHITE
+POINT_EXTERIOR_COLOR :: rl.BLACK
 POINT_RADIUS :: 5
 
 FONT_SMALL :: 32
@@ -29,6 +30,9 @@ paused := false
 message : cstring
 
 grid : [GRID_ROWS][GRID_COLS]Point
+
+implicit_fn : proc(x, y : f32) -> f32
+threshold : f32
 
 main :: proc() {
     rl.SetTraceLogLevel(.ERROR)
@@ -51,8 +55,23 @@ main :: proc() {
 init_sim :: proc() {
     // message = "Howdy, World!"
 
-    x_offset := screen_width / f32(GRID_COLS) / 2
-    y_offset := screen_height / f32(GRID_ROWS) / 2
+    // Let's do an ellipse
+    implicit_fn = proc(x, y : f32) -> f32 {
+        height : f32 = 500.0
+        width : f32 = 920.0
+        center : rl.Vector2 = {screen_width / 2.0, screen_height / 2.0}
+
+        x2 := (x - center[0]) * (x - center[0])
+        y2 := (y - center[1]) * (y - center[1])
+        a2 := width / 2.0 * width / 2.0
+        b2 := height / 2.0 * height / 2.0
+
+        return -(x2 / a2 + y2 / b2)
+    }
+    threshold = -1
+
+    x_offset := screen_width / f32(GRID_COLS) / 2.0
+    y_offset := screen_height / f32(GRID_ROWS) / 2.0
     for ii in 0..<GRID_ROWS {
         for jj in 0..<GRID_COLS {
             grid[ii][jj].x = f32(jj) / f32(GRID_COLS) * screen_width + x_offset
@@ -62,7 +81,15 @@ init_sim :: proc() {
 }
 
 update_sim :: proc() {
-    
+    for ii in 0..<len(grid) {
+        for jj in 0..<len(grid[ii]) {
+            if implicit_fn(grid[ii][jj].x, grid[ii][jj].y) > threshold {
+                grid[ii][jj].interior = true
+            } else {
+                grid[ii][jj].interior = false
+            }
+        }
+    }
 }
 
 draw_sim :: proc() {
@@ -73,7 +100,11 @@ draw_sim :: proc() {
 
     for row in grid {
         for point in row {
-            rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_COLOR)
+            if point.interior {
+                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
+            } else {
+                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
+            }
         }
     }
 
