@@ -39,7 +39,7 @@ GRID_ROWS :: 64
 GRID_COLS :: 64
 
 // Contains all possible active edge configurations
-edge_table : [16]i32 = {
+edge_table : [16]u8 = {
     0b0000,
     0b1001,
     0b0011,
@@ -59,7 +59,7 @@ edge_table : [16]i32 = {
 }
 
 // Contains all possible vertex pairs
-line_table : [16][4]i32 = {
+line_table : [16][4]i8 = {
     {-1, -1, -1, -1},
     { 0,  3, -1, -1},
     { 0,  1, -1, -1},
