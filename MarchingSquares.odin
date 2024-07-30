@@ -59,8 +59,6 @@ line_table : [16][4]i32 = {
 
 Point :: struct {x, y : f32, interior : bool}
 
-// MarchingSquare :: struct {vertex_indices : [4]i32}
-
 screen_width := f32(INITIAL_SCREEN_WIDTH)
 screen_height := f32(INITIAL_SCREEN_HEIGHT)
 
@@ -69,7 +67,6 @@ paused := false
 message : cstring
 
 grid : [GRID_ROWS][GRID_COLS]Point
-// lines : [dynamic]f32  // Not a leak; cleaned up on program exit.
 
 implicit_fn : proc(x, y : f32) -> f32
 threshold : f32
@@ -153,9 +150,6 @@ draw_sim :: proc() {
     // March the square
     for ii in 0..<(GRID_ROWS - 1) {
         for jj in 0..<(GRID_COLS - 1) {
-            // List of vertices to draw between
-            vert_list : [4][2]f32
-
             // Determine index
             square_index : i32
             if grid[ii    ][jj    ].interior do square_index |= 0b0001
@@ -164,6 +158,7 @@ draw_sim :: proc() {
             if grid[ii + 1][jj    ].interior do square_index |= 0b1000
 
             // Determine vertices
+            vert_list : [4][2]f32
             // TODO(melmer): Interpolation
             // TODO(melmer): Only determine those that are part of a line
             vert_list[0] = {
