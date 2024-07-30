@@ -26,6 +26,7 @@ INITIAL_SCREEN_WIDTH :: 1024
 INITIAL_SCREEN_HEIGHT :: 1024
 
 BACKGROUND_COLOR :: rl.DARKGRAY
+LINE_COLOR :: rl.RAYWHITE
 POINT_INTERIOR_COLOR :: rl.RAYWHITE
 POINT_EXTERIOR_COLOR :: rl.BLACK
 POINT_RADIUS :: 5
@@ -37,7 +38,7 @@ FONT_LARGE :: 96
 GRID_ROWS :: 16
 GRID_COLS :: 16
 
-LINE_TABLE : [16][4]i32 : {
+line_table : [16][4]i32 = {
     {-1, -1, -1, -1},
     { 0,  3, -1, -1},
     { 0,  1, -1, -1},
@@ -58,6 +59,8 @@ LINE_TABLE : [16][4]i32 : {
 
 Point :: struct {x, y : f32, interior : bool}
 
+// MarchingSquare :: struct {vertex_indices : [4]i32}
+
 screen_width := f32(INITIAL_SCREEN_WIDTH)
 screen_height := f32(INITIAL_SCREEN_HEIGHT)
 
@@ -66,6 +69,7 @@ paused := false
 message : cstring
 
 grid : [GRID_ROWS][GRID_COLS]Point
+// lines : [dynamic]f32  // Not a leak; cleaned up on program exit.
 
 implicit_fn : proc(x, y : f32) -> f32
 threshold : f32
@@ -117,8 +121,9 @@ init_sim :: proc() {
 }
 
 update_sim :: proc() {
-    for ii in 0..<len(grid) {
-        for jj in 0..<len(grid[ii]) {
+    // Update points
+    for ii in 0..<GRID_ROWS {
+        for jj in 0..<GRID_COLS {
             if implicit_fn(grid[ii][jj].x, grid[ii][jj].y) < threshold {
                 grid[ii][jj].interior = true
             } else {
@@ -134,12 +139,51 @@ draw_sim :: proc() {
 
     rl.ClearBackground(BACKGROUND_COLOR)
 
+    // Draw points
     for row in grid {
         for point in row {
             if point.interior {
                 rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
             } else {
                 rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
+            }
+        }
+    }
+
+    // March the square
+    for ii in 0..<(GRID_ROWS - 1) {
+        for jj in 0..<(GRID_COLS - 1) {
+            // List of vertices to draw between
+            vert_list : [4][2]f32
+
+            // Determine index
+            square_index : i32
+            if grid[ii    ][jj    ].interior do square_index |= 0b0001
+            if grid[ii    ][jj + 1].interior do square_index |= 0b0010
+            if grid[ii + 1][jj + 1].interior do square_index |= 0b0100
+            if grid[ii + 1][jj    ].interior do square_index |= 0b1000
+
+            // Determine vertices
+            // TODO(melmer): Interpolation
+            // TODO(melmer): Only determine those that are part of a line
+            vert_list[0] = {
+                (grid[ii][jj].x + grid[ii][jj + 1].x) / 2.0, grid[ii][jj].y
+            }
+            vert_list[1] = {
+                grid[ii][jj + 1].x, (grid[ii][jj + 1].y + grid[ii + 1][jj + 1].y) / 2.0
+            }
+            vert_list[2] = {
+                (grid[ii + 1][jj + 1].x + grid[ii + 1][jj].x) / 2.0, grid[ii + 1][jj + 1].y
+            }
+            vert_list[3] = {
+                grid[ii + 1][jj].x, (grid[ii + 1][jj].y + grid[ii][jj].y) / 2.0
+            }
+
+            // Draw lines between the vertices
+            for kk := 0; kk < 4 && line_table[square_index][kk] != -1; kk += 2 {
+                start := vert_list[line_table[square_index][kk]]
+                end := vert_list[line_table[square_index][kk + 1]]
+                rl.DrawLineV(start, end, LINE_COLOR)
             }
         }
     }
