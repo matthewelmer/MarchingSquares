@@ -6,25 +6,34 @@ import "core:math/linalg"
 import rl "vendor:raylib"
 
 INITIAL_SCREEN_WIDTH :: 1024
-INITIAL_SCREEN_HEIGHT :: 720
+INITIAL_SCREEN_HEIGHT :: 1024
 
 BACKGROUND_COLOR :: rl.DARKGRAY
-PARTICLE_COLOR :: rl.RAYWHITE
+POINT_COLOR :: rl.RAYWHITE
+POINT_RADIUS :: 5
 
 FONT_SMALL :: 32
 FONT_MEDIUM :: 64
 FONT_LARGE :: 96
+
+GRID_ROWS :: 16
+GRID_COLS :: 16
+
+Point :: struct {x, y : f32, interior : bool}
 
 screen_width := f32(INITIAL_SCREEN_WIDTH)
 screen_height := f32(INITIAL_SCREEN_HEIGHT)
 
 frame_time : f32
 paused := false
+message : cstring
+
+grid : [GRID_ROWS][GRID_COLS]Point
 
 main :: proc() {
     rl.SetTraceLogLevel(.ERROR)
     rl.SetConfigFlags({.VSYNC_HINT, .MSAA_4X_HINT})
-    rl.InitWindow(INITIAL_SCREEN_WIDTH, INITIAL_SCREEN_WIDTH, "Marching Squares")
+    rl.InitWindow(INITIAL_SCREEN_WIDTH, INITIAL_SCREEN_HEIGHT, "Marching Squares")
     defer rl.CloseWindow()
 
     init_sim()
@@ -40,7 +49,16 @@ main :: proc() {
 }
 
 init_sim :: proc() {
-    
+    // message = "Howdy, World!"
+
+    x_offset := screen_width / f32(GRID_COLS) / 2
+    y_offset := screen_height / f32(GRID_ROWS) / 2
+    for ii in 0..<GRID_ROWS {
+        for jj in 0..<GRID_COLS {
+            grid[ii][jj].x = f32(jj) / f32(GRID_COLS) * screen_width + x_offset
+            grid[ii][jj].y = f32(ii) / f32(GRID_ROWS) * screen_height + y_offset
+        }
+    }
 }
 
 update_sim :: proc() {
@@ -52,6 +70,21 @@ draw_sim :: proc() {
     defer rl.EndDrawing()
 
     rl.ClearBackground(BACKGROUND_COLOR)
+
+    for row in grid {
+        for point in row {
+            rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_COLOR)
+        }
+    }
+
+    message_width := rl.MeasureText(message, FONT_MEDIUM)
+    rl.DrawText(
+        message,
+        i32(0.5 * (screen_width - f32(message_width))),
+        i32(0.75 * screen_height - FONT_MEDIUM),
+        FONT_MEDIUM,
+        rl.LIGHTGRAY,
+    )
 
     rl.DrawFPS(0, 0)
 }
