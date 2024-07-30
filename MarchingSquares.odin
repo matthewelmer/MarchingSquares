@@ -85,7 +85,9 @@ screen_height := f32(INITIAL_SCREEN_HEIGHT)
 
 frame_time : f32
 paused := false
+pre_pause_message : cstring
 message : cstring
+draw_points : bool
 
 grid : [GRID_ROWS][GRID_COLS]Point
 
@@ -140,7 +142,21 @@ init_sim :: proc() {
 }
 
 update_sim :: proc() {
-    
+    if rl.IsKeyPressed(.P) {
+        paused = !paused
+        if paused {
+            pre_pause_message = message
+            message = "Paused."
+        } else {
+            message = pre_pause_message
+        }
+    }
+
+    if paused do return
+
+    if rl.IsKeyPressed(.SPACE) {
+        draw_points = !draw_points
+    }
 }
 
 draw_sim :: proc() {
@@ -149,16 +165,16 @@ draw_sim :: proc() {
 
     rl.ClearBackground(BACKGROUND_COLOR)
 
-    // // Draw points
-    // for row in grid {
-    //     for point in row {
-    //         if point.value < isovalue {
-    //             rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
-    //         } else {
-    //             rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
-    //         }
-    //     }
-    // }
+    // Draw points
+    if draw_points do for row in grid {
+        for point in row {
+            if point.value < isovalue {
+                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
+            } else {
+                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
+            }
+        }
+    }
 
     // March the square
     for ii in 0..<(GRID_ROWS - 1) {
