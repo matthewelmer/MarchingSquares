@@ -35,13 +35,28 @@ FONT_SMALL :: 32
 FONT_MEDIUM :: 64
 FONT_LARGE :: 96
 
-GRID_ROWS :: 32
-GRID_COLS :: 32
+GRID_ROWS :: 64
+GRID_COLS :: 64
 
-// // Contains all possible active edge configurations
-// edge_table : [16][4]i32 = {
-
-// }
+// Contains all possible active edge configurations
+edge_table : [16]i32 = {
+    0b0000,
+    0b1001,
+    0b0011,
+    0b1010,
+    0b0110,
+    0b1111,
+    0b0101,
+    0b1100,
+    0b1100,
+    0b0101,
+    0b1111,
+    0b0110,
+    0b1010,
+    0b0011,
+    0b1001,
+    0b0000,
+}
 
 // Contains all possible vertex pairs
 line_table : [16][4]i32 = {
@@ -134,16 +149,16 @@ draw_sim :: proc() {
 
     rl.ClearBackground(BACKGROUND_COLOR)
 
-    // Draw points
-    for row in grid {
-        for point in row {
-            if point.value < isovalue {
-                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
-            } else {
-                rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
-            }
-        }
-    }
+    // // Draw points
+    // for row in grid {
+    //     for point in row {
+    //         if point.value < isovalue {
+    //             rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
+    //         } else {
+    //             rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
+    //         }
+    //     }
+    // }
 
     // March the square
     for ii in 0..<(GRID_ROWS - 1) {
@@ -157,8 +172,7 @@ draw_sim :: proc() {
 
             // Determine vertices
             vert_list : [4][2]f32
-            // TODO(melmer): Only determine those that are part of a line
-            vert_list[0] = {
+            if bool(edge_table[square_index] & 0b0001) do vert_list[0] = {
                 linear_interp(
                     grid[ii][jj].value,
                     grid[ii][jj + 1].value,
@@ -168,7 +182,7 @@ draw_sim :: proc() {
                 ),
                 grid[ii][jj].y,
             }
-            vert_list[1] = {
+            if bool(edge_table[square_index] & 0b0010) do vert_list[1] = {
                 grid[ii][jj + 1].x,
                 linear_interp(
                 grid[ii][jj + 1].value,
@@ -178,7 +192,7 @@ draw_sim :: proc() {
                 isovalue
             ),
             }
-            vert_list[2] = {
+            if bool(edge_table[square_index] & 0b0100) do vert_list[2] = {
                 linear_interp(
                     grid[ii + 1][jj + 1].value,
                     grid[ii + 1][jj].value,
@@ -188,7 +202,7 @@ draw_sim :: proc() {
                 ),
                 grid[ii + 1][jj + 1].y,
             }
-            vert_list[3] = {
+            if bool(edge_table[square_index] & 0b1000) do vert_list[3] = {
                 grid[ii + 1][jj].x,
                 linear_interp(
                     grid[ii + 1][jj].value,
