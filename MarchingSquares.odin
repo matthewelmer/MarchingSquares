@@ -29,15 +29,21 @@ BACKGROUND_COLOR :: rl.DARKGRAY
 LINE_COLOR :: rl.RAYWHITE
 POINT_INTERIOR_COLOR :: rl.RAYWHITE
 POINT_EXTERIOR_COLOR :: rl.BLACK
-POINT_RADIUS :: 5
+POINT_RADIUS :: 3
 
 FONT_SMALL :: 32
 FONT_MEDIUM :: 64
 FONT_LARGE :: 96
 
-GRID_ROWS :: 16
-GRID_COLS :: 16
+GRID_ROWS :: 32
+GRID_COLS :: 32
 
+// // Contains all possible active edge configurations
+// edge_table : [16][4]i32 = {
+
+// }
+
+// Contains all possible vertex pairs
 line_table : [16][4]i32 = {
     {-1, -1, -1, -1},
     { 0,  3, -1, -1},
@@ -57,7 +63,7 @@ line_table : [16][4]i32 = {
     {-1, -1, -1, -1},
 }
 
-Point :: struct {x, y : f32, interior : bool}
+Point :: struct {x, y, value : f32}
 
 screen_width := f32(INITIAL_SCREEN_WIDTH)
 screen_height := f32(INITIAL_SCREEN_HEIGHT)
@@ -69,7 +75,7 @@ message : cstring
 grid : [GRID_ROWS][GRID_COLS]Point
 
 implicit_fn : proc(x, y : f32) -> f32
-threshold : f32
+isovalue : f32
 
 main :: proc() {
     rl.SetTraceLogLevel(.ERROR)
@@ -105,7 +111,7 @@ init_sim :: proc() {
 
         return x2 / a2 + y2 / b2
     }
-    threshold = 1
+    isovalue = 1
 
     x_offset := screen_width / f32(GRID_COLS) / 2.0
     y_offset := screen_height / f32(GRID_ROWS) / 2.0
@@ -113,21 +119,13 @@ init_sim :: proc() {
         for jj in 0..<GRID_COLS {
             grid[ii][jj].x = f32(jj) / f32(GRID_COLS) * screen_width + x_offset
             grid[ii][jj].y = f32(ii) / f32(GRID_ROWS) * screen_height + y_offset
+            grid[ii][jj].value = implicit_fn(grid[ii][jj].x, grid[ii][jj].y)
         }
     }
 }
 
 update_sim :: proc() {
-    // Update points
-    for ii in 0..<GRID_ROWS {
-        for jj in 0..<GRID_COLS {
-            if implicit_fn(grid[ii][jj].x, grid[ii][jj].y) < threshold {
-                grid[ii][jj].interior = true
-            } else {
-                grid[ii][jj].interior = false
-            }
-        }
-    }
+    
 }
 
 draw_sim :: proc() {
@@ -139,7 +137,7 @@ draw_sim :: proc() {
     // Draw points
     for row in grid {
         for point in row {
-            if point.interior {
+            if point.value < isovalue {
                 rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_INTERIOR_COLOR)
             } else {
                 rl.DrawCircle(i32(point.x), i32(point.y), POINT_RADIUS, POINT_EXTERIOR_COLOR)
@@ -152,26 +150,53 @@ draw_sim :: proc() {
         for jj in 0..<(GRID_COLS - 1) {
             // Determine index
             square_index : i32
-            if grid[ii    ][jj    ].interior do square_index |= 0b0001
-            if grid[ii    ][jj + 1].interior do square_index |= 0b0010
-            if grid[ii + 1][jj + 1].interior do square_index |= 0b0100
-            if grid[ii + 1][jj    ].interior do square_index |= 0b1000
+            if grid[ii    ][jj    ].value < isovalue do square_index |= 0b0001
+            if grid[ii    ][jj + 1].value < isovalue do square_index |= 0b0010
+            if grid[ii + 1][jj + 1].value < isovalue do square_index |= 0b0100
+            if grid[ii + 1][jj    ].value < isovalue do square_index |= 0b1000
 
             // Determine vertices
             vert_list : [4][2]f32
-            // TODO(melmer): Interpolation
             // TODO(melmer): Only determine those that are part of a line
             vert_list[0] = {
-                (grid[ii][jj].x + grid[ii][jj + 1].x) / 2.0, grid[ii][jj].y
+                linear_interp(
+                    grid[ii][jj].value,
+                    grid[ii][jj + 1].value,
+                    grid[ii][jj].x,
+                    grid[ii][jj + 1].x,
+                    isovalue
+                ),
+                grid[ii][jj].y,
             }
             vert_list[1] = {
-                grid[ii][jj + 1].x, (grid[ii][jj + 1].y + grid[ii + 1][jj + 1].y) / 2.0
+                grid[ii][jj + 1].x,
+                linear_interp(
+                grid[ii][jj + 1].value,
+                grid[ii + 1][jj + 1].value,
+                grid[ii][jj + 1].y,
+                grid[ii + 1][jj + 1].y,
+                isovalue
+            ),
             }
             vert_list[2] = {
-                (grid[ii + 1][jj + 1].x + grid[ii + 1][jj].x) / 2.0, grid[ii + 1][jj + 1].y
+                linear_interp(
+                    grid[ii + 1][jj + 1].value,
+                    grid[ii + 1][jj].value,
+                    grid[ii + 1][jj + 1].x,
+                    grid[ii + 1][jj].x,
+                    isovalue
+                ),
+                grid[ii + 1][jj + 1].y,
             }
             vert_list[3] = {
-                grid[ii + 1][jj].x, (grid[ii + 1][jj].y + grid[ii][jj].y) / 2.0
+                grid[ii + 1][jj].x,
+                linear_interp(
+                    grid[ii + 1][jj].value,
+                    grid[ii][jj].value,
+                    grid[ii + 1][jj].y,
+                    grid[ii][jj].y,
+                    isovalue
+                ),
             }
 
             // Draw lines between the vertices
@@ -193,6 +218,10 @@ draw_sim :: proc() {
     )
 
     rl.DrawFPS(0, 0)
+}
+
+linear_interp :: proc(x1, x2, y1, y2, x : f32) -> f32 {
+    return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
 }
 
 timeout :: proc(duration: f32) {
