@@ -5,6 +5,23 @@ import "core:math"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
+/* Vertex and Edge Table
+V0 ---- E0 ---- V1
+ |               |
+ |               |
+ |               |
+E3              E1
+ |               |
+ |               |
+ |               |
+V3 ---- E2 ---- V2
+
+V0 = 0b0001
+V1 = 0b0010
+V2 = 0b0100
+V3 = 0b1000
+*/
+
 INITIAL_SCREEN_WIDTH :: 1024
 INITIAL_SCREEN_HEIGHT :: 1024
 
@@ -19,6 +36,25 @@ FONT_LARGE :: 96
 
 GRID_ROWS :: 16
 GRID_COLS :: 16
+
+LINE_TABLE : [16][4]i32 : {
+    {-1, -1, -1, -1},
+    { 0,  3, -1, -1},
+    { 0,  1, -1, -1},
+    { 1,  3, -1, -1},
+    { 1,  2, -1, -1},
+    { 0,  1,  2,  3},
+    { 0,  2, -1, -1},
+    { 2,  3, -1, -1},
+    { 2,  3, -1, -1},
+    { 0,  2, -1, -1},
+    { 0,  3,  1,  2},
+    { 1,  2, -1, -1},
+    { 1,  3, -1, -1},
+    { 0,  1, -1, -1},
+    { 0,  3, -1, -1},
+    {-1, -1, -1, -1},
+}
 
 Point :: struct {x, y : f32, interior : bool}
 
@@ -66,9 +102,9 @@ init_sim :: proc() {
         a2 := width / 2.0 * width / 2.0
         b2 := height / 2.0 * height / 2.0
 
-        return -(x2 / a2 + y2 / b2)
+        return x2 / a2 + y2 / b2
     }
-    threshold = -1
+    threshold = 1
 
     x_offset := screen_width / f32(GRID_COLS) / 2.0
     y_offset := screen_height / f32(GRID_ROWS) / 2.0
@@ -83,7 +119,7 @@ init_sim :: proc() {
 update_sim :: proc() {
     for ii in 0..<len(grid) {
         for jj in 0..<len(grid[ii]) {
-            if implicit_fn(grid[ii][jj].x, grid[ii][jj].y) > threshold {
+            if implicit_fn(grid[ii][jj].x, grid[ii][jj].y) < threshold {
                 grid[ii][jj].interior = true
             } else {
                 grid[ii][jj].interior = false
