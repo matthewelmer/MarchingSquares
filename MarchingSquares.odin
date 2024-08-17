@@ -3,6 +3,7 @@ package MarchingSquares
 import "core:fmt"
 import "core:math"
 import "core:math/linalg"
+import st "Statistics"
 import rl "vendor:raylib"
 
 /* Vertex and Edge Table
@@ -37,6 +38,8 @@ FONT_LARGE :: 96
 
 GRID_ROWS :: 64
 GRID_COLS :: 64
+
+log :: proc(x: $T) -> T {return math.log(x, math.e)}
 
 // Contains all possible active edge configurations
 edge_table : [16]u8 = {
@@ -113,20 +116,17 @@ main :: proc() {
 }
 
 init_sim :: proc() {
-    // Let's do an ellipse
-    implicit_fn = proc(pos : [2]f32) -> f32 {
-        height : f32 = 500.0
-        width : f32 = 920.0
-        center : rl.Vector2 = {screen_width / 2.0, screen_height / 2.0}
+    implicit_fn = proc(pos: [2]f32) -> f32 {
+        sigma_x : f32 = 100000.0
+        sigma_y : f32 = 50000.0
+        d := st.Gaussian(f32, 2){
+            {screen_width / 2.0, screen_height / 2.0},
+            {sigma_x, 0.0, 0.0, sigma_y},
+        }
 
-        x2 := (pos[0] - center[0]) * (pos[0] - center[0])
-        y2 := (pos[1] - center[1]) * (pos[1] - center[1])
-        a2 := width / 2.0 * width / 2.0
-        b2 := height / 2.0 * height / 2.0
-
-        return x2 / a2 + y2 / b2
+        return -st.density(d, pos)
     }
-    isovalue = 1
+    isovalue = -1e-6
 
     x_offset := screen_width / f32(GRID_COLS) / 2.0
     y_offset := screen_height / f32(GRID_ROWS) / 2.0
