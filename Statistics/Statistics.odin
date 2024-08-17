@@ -30,7 +30,7 @@ GaussianScalar :: struct($T: typeid) {m, s: T}
 density_gaussian_scalar :: proc(gaussian: GaussianScalar($T), x: T) -> T {
     m := gaussian.m
     s := gaussian.s
-    return 1 / sqrt(2 * PI * s * s) * exp(-(x - m) * (x - m) / (2 * s * s))
+    return exp(-(x - m) * (x - m) / (2 * s * s)) / sqrt(2 * PI * s * s)
 }
 log_density_gaussian_scalar :: proc(gaussian: GaussianScalar($T), x: T) -> T {
     m := gaussian.m
