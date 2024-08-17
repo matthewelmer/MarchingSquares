@@ -129,17 +129,16 @@ init_sim :: proc() {
     sigma_y = 50.0
     gaussian = {{mean_x, mean_y}, {sigma_x, 0.0, 0.0, sigma_y}}
     implicit_fn = proc(pos: [2]f32) -> f32 {
-        return -st.density(gaussian, pos)
+        return -(st.log_density(gaussian, pos))
     }
     // One sigma
-    isovalue = -st.density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{sigma_x, 0.0})
-    // fmt.println(isovalue)
+    isovalue = -(st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{sigma_x, 0.0}))
 
     // Two sigma
-    isovalue = -st.density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{2 * sigma_x, 0.0})
+    isovalue = -(st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{2 * sigma_x, 0.0}))
 
     // Three sigma
-    // isovalue = -st.density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{3 * sigma_x, 0.0})
+    isovalue = -(st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{3 * sigma_x, 0.0}))
 
     // ??? sigma
     // isovalue = -1e-6
