@@ -7,15 +7,18 @@ import st "Statistics"
 import rl "vendor:raylib"
 
 /* Vertex and Edge Table
-V0 ---- E0 ---- V1
- |               |
- |               |
- |               |
-E3              E1
- |               |
- |               |
- |               |
-V3 ---- E2 ---- V2
+Y
+|
+|
+* --- X
+
+0 --- 0 --- 1
+|           |
+|           |
+3           1
+|           |
+|           |
+3 --- 2 --- 2
 
 V0, E0 = 0b0001
 V1, E1 = 0b0010
