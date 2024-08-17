@@ -260,7 +260,7 @@ draw_sim :: proc() {
     rl.DrawFPS(0, 0)
 }
 
-linear_interp :: proc(x1, x2, y1, y2, x : f32) -> f32 {
+linear_interp :: proc(x1, x2, y1, y2, x : $T) -> T {
     return y1 + (x - x1) * (y2 - y1) / (x2 - x1)
 }
 
