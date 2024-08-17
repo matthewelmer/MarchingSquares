@@ -97,6 +97,13 @@ grid : [GRID_ROWS][GRID_COLS]Point
 implicit_fn : proc(pos : [2]f32) -> f32
 isovalue : f32
 
+sigma_x : f32 = 100000.0
+sigma_y : f32 = 50000.0
+gaussian : st.Gaussian(f32, 2) = {
+    {screen_width / 2.0, screen_height / 2.0},
+    {sigma_x, 0.0, 0.0, sigma_y},
+}
+
 main :: proc() {
     rl.SetTraceLogLevel(.ERROR)
     rl.SetConfigFlags({.VSYNC_HINT, .MSAA_4X_HINT})
@@ -116,17 +123,26 @@ main :: proc() {
 }
 
 init_sim :: proc() {
+    mean_x := screen_width / 2.0
+    mean_y := screen_height / 2.0
+    sigma_x = 100.0
+    sigma_y = 50.0
+    gaussian = {{mean_x, mean_y}, {sigma_x, 0.0, 0.0, sigma_y}}
     implicit_fn = proc(pos: [2]f32) -> f32 {
-        sigma_x : f32 = 100000.0
-        sigma_y : f32 = 50000.0
-        d := st.Gaussian(f32, 2){
-            {screen_width / 2.0, screen_height / 2.0},
-            {sigma_x, 0.0, 0.0, sigma_y},
-        }
-
-        return -st.density(d, pos)
+        return -st.density(gaussian, pos)
     }
-    isovalue = -1e-6
+    // One sigma
+    isovalue = -st.density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{sigma_x, 0.0})
+    // fmt.println(isovalue)
+
+    // Two sigma
+    isovalue = -st.density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{2 * sigma_x, 0.0})
+
+    // Three sigma
+    // isovalue = -st.density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{3 * sigma_x, 0.0})
+
+    // ??? sigma
+    // isovalue = -1e-6
 
     x_offset := screen_width / f32(GRID_COLS) / 2.0
     y_offset := screen_height / f32(GRID_ROWS) / 2.0
