@@ -41,6 +41,9 @@ FONT_LARGE :: 96
 GRID_ROWS :: 64
 GRID_COLS :: 64
 
+PI :: math.PI
+cos :: math.cos
+sin :: math.sin
 log :: proc(x: $T) -> T {return math.log(x, math.e)}
 
 // Contains all possible active edge configurations
@@ -97,7 +100,7 @@ draw_points : bool
 grid : [GRID_ROWS][GRID_COLS]Point
 
 implicit_fn : proc(pos : [2]f32) -> f32
-isovalues : [dynamic]f32
+isovalues : [dynamic]f32  // Let the OS clean this up
 
 sigma_x : f32 = 100000.0
 sigma_y : f32 = 50000.0
@@ -130,6 +133,12 @@ init_sim :: proc() {
     sigma_x = 100.0
     sigma_y = 50.0
     gaussian = {{mean_x, mean_y}, {sigma_x, 0.0, 0.0, sigma_y}}
+    rotation_angle : f32 = 45 * PI / 180.0
+    rotation_matrix := matrix[2, 2]f32 {
+         cos(rotation_angle), sin(rotation_angle),
+        -sin(rotation_angle), cos(rotation_angle),
+    }
+    gaussian.S = rotation_matrix * gaussian.S * linalg.transpose(rotation_matrix)
     implicit_fn = proc(pos: [2]f32) -> f32 {
         return -st.log_density(gaussian, pos)
     }
