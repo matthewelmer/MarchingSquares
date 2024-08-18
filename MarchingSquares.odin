@@ -177,12 +177,6 @@ draw_sim :: proc() {
 
     slice.reverse_sort(isovalues[:])
 
-    if draw_points do for row in grid {
-        for point in row {
-            rl.DrawCircle(i32(point.pos[0]), i32(point.pos[1]), POINT_RADIUS, POINT_EXTERIOR_COLOR)
-        }
-    }
-
     for isovalue, isovalue_idx in isovalues {
         brightness := f32(isovalue_idx + 1) / f32(len(isovalues))
 
