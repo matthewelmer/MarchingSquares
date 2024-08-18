@@ -3,6 +3,7 @@ package MarchingSquares
 import "core:fmt"
 import "core:math"
 import "core:math/linalg"
+import "core:slice"
 import st "Statistics"
 import rl "vendor:raylib"
 
@@ -29,9 +30,7 @@ V3, E3 = 0b1000
 INITIAL_SCREEN_WIDTH :: 1024
 INITIAL_SCREEN_HEIGHT :: 1024
 
-BACKGROUND_COLOR :: rl.DARKGRAY
-LINE_COLOR :: rl.RAYWHITE
-POINT_INTERIOR_COLOR :: rl.RAYWHITE
+BACKGROUND_COLOR :: rl.BLACK
 POINT_EXTERIOR_COLOR :: rl.BLACK
 POINT_RADIUS :: 3
 
@@ -98,7 +97,7 @@ draw_points : bool
 grid : [GRID_ROWS][GRID_COLS]Point
 
 implicit_fn : proc(pos : [2]f32) -> f32
-isovalue : f32
+isovalues : [dynamic]f32
 
 sigma_x : f32 = 100000.0
 sigma_y : f32 = 50000.0
@@ -134,14 +133,12 @@ init_sim :: proc() {
     implicit_fn = proc(pos: [2]f32) -> f32 {
         return -st.log_density(gaussian, pos)
     }
-    // One sigma
-    isovalue = -st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{sigma_x, 0.0})
 
-    // Two sigma
-    isovalue = -st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{2 * sigma_x, 0.0})
-
-    // Three sigma
-    isovalue = -st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{3 * sigma_x, 0.0})
+    append(&isovalues,
+        -st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{sigma_x, 0.0}),
+        -st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{2 * sigma_x, 0.0}),
+        -st.log_density(gaussian, [2]f32{mean_x, mean_y} + [2]f32{3 * sigma_x, 0.0}),
+    )
 
     x_offset := screen_width / f32(GRID_COLS) / 2.0
     y_offset := screen_height / f32(GRID_ROWS) / 2.0
@@ -178,75 +175,87 @@ draw_sim :: proc() {
 
     rl.ClearBackground(BACKGROUND_COLOR)
 
-    // Draw points
+    slice.reverse_sort(isovalues[:])
+
     if draw_points do for row in grid {
         for point in row {
-            if point.value < isovalue {
-                rl.DrawCircle(i32(point.pos[0]), i32(point.pos[1]), POINT_RADIUS, POINT_INTERIOR_COLOR)
-            } else {
-                rl.DrawCircle(i32(point.pos[0]), i32(point.pos[1]), POINT_RADIUS, POINT_EXTERIOR_COLOR)
-            }
+            rl.DrawCircle(i32(point.pos[0]), i32(point.pos[1]), POINT_RADIUS, POINT_EXTERIOR_COLOR)
         }
     }
 
-    // March the square
-    for ii in 0..<(GRID_ROWS - 1) {
-        for jj in 0..<(GRID_COLS - 1) {
-            // Determine index
-            square_index : i32
-            if grid[ii    ][jj    ].value < isovalue do square_index |= 0b0001
-            if grid[ii    ][jj + 1].value < isovalue do square_index |= 0b0010
-            if grid[ii + 1][jj + 1].value < isovalue do square_index |= 0b0100
-            if grid[ii + 1][jj    ].value < isovalue do square_index |= 0b1000
+    for isovalue, isovalue_idx in isovalues {
+        brightness := f32(isovalue_idx + 1) / f32(len(isovalues))
 
-            // Determine vertices
-            vert_list : [4][2]f32
-            if bool(edge_table[square_index] & 0b0001) do vert_list[0] = {
-                linear_interp(
-                    grid[ii][jj].value,
-                    grid[ii][jj + 1].value,
-                    grid[ii][jj].pos[0],
-                    grid[ii][jj + 1].pos[0],
-                    isovalue
-                ),
-                grid[ii][jj].pos[1],
+        color := rl.ColorFromHSV(0.0, 0.0, brightness)
+
+        // Draw points
+        if draw_points do for row in grid {
+            for point in row {
+                if point.value < isovalue {
+                    rl.DrawCircle(i32(point.pos[0]), i32(point.pos[1]), POINT_RADIUS, color)
+                }
             }
-            if bool(edge_table[square_index] & 0b0010) do vert_list[1] = {
-                grid[ii][jj + 1].pos[0],
-                linear_interp(
-                grid[ii][jj + 1].value,
-                grid[ii + 1][jj + 1].value,
-                grid[ii][jj + 1].pos[1],
-                grid[ii + 1][jj + 1].pos[1],
-                isovalue
-            ),
-            }
-            if bool(edge_table[square_index] & 0b0100) do vert_list[2] = {
-                linear_interp(
-                    grid[ii + 1][jj + 1].value,
-                    grid[ii + 1][jj].value,
-                    grid[ii + 1][jj + 1].pos[0],
-                    grid[ii + 1][jj].pos[0],
-                    isovalue
-                ),
-                grid[ii + 1][jj + 1].pos[1],
-            }
-            if bool(edge_table[square_index] & 0b1000) do vert_list[3] = {
-                grid[ii + 1][jj].pos[0],
-                linear_interp(
-                    grid[ii + 1][jj].value,
-                    grid[ii][jj].value,
-                    grid[ii + 1][jj].pos[1],
+        }
+    
+        // March the square
+        for ii in 0..<(GRID_ROWS - 1) {
+            for jj in 0..<(GRID_COLS - 1) {
+                // Determine index
+                square_index : i32
+                if grid[ii    ][jj    ].value < isovalue do square_index |= 0b0001
+                if grid[ii    ][jj + 1].value < isovalue do square_index |= 0b0010
+                if grid[ii + 1][jj + 1].value < isovalue do square_index |= 0b0100
+                if grid[ii + 1][jj    ].value < isovalue do square_index |= 0b1000
+    
+                // Determine vertices
+                vert_list : [4][2]f32
+                if bool(edge_table[square_index] & 0b0001) do vert_list[0] = {
+                    linear_interp(
+                        grid[ii][jj].value,
+                        grid[ii][jj + 1].value,
+                        grid[ii][jj].pos[0],
+                        grid[ii][jj + 1].pos[0],
+                        isovalue
+                    ),
                     grid[ii][jj].pos[1],
+                }
+                if bool(edge_table[square_index] & 0b0010) do vert_list[1] = {
+                    grid[ii][jj + 1].pos[0],
+                    linear_interp(
+                    grid[ii][jj + 1].value,
+                    grid[ii + 1][jj + 1].value,
+                    grid[ii][jj + 1].pos[1],
+                    grid[ii + 1][jj + 1].pos[1],
                     isovalue
                 ),
-            }
-
-            // Draw lines between the vertices
-            for kk := 0; kk < 4 && line_table[square_index][kk] != -1; kk += 2 {
-                start := vert_list[line_table[square_index][kk]]
-                end := vert_list[line_table[square_index][kk + 1]]
-                rl.DrawLineV(start, end, LINE_COLOR)
+                }
+                if bool(edge_table[square_index] & 0b0100) do vert_list[2] = {
+                    linear_interp(
+                        grid[ii + 1][jj + 1].value,
+                        grid[ii + 1][jj].value,
+                        grid[ii + 1][jj + 1].pos[0],
+                        grid[ii + 1][jj].pos[0],
+                        isovalue
+                    ),
+                    grid[ii + 1][jj + 1].pos[1],
+                }
+                if bool(edge_table[square_index] & 0b1000) do vert_list[3] = {
+                    grid[ii + 1][jj].pos[0],
+                    linear_interp(
+                        grid[ii + 1][jj].value,
+                        grid[ii][jj].value,
+                        grid[ii + 1][jj].pos[1],
+                        grid[ii][jj].pos[1],
+                        isovalue
+                    ),
+                }
+    
+                // Draw lines between the vertices
+                for kk := 0; kk < 4 && line_table[square_index][kk] != -1; kk += 2 {
+                    start := vert_list[line_table[square_index][kk]]
+                    end := vert_list[line_table[square_index][kk + 1]]
+                    rl.DrawLineV(start, end, color)
+                }
             }
         }
     }
